@@ -148,6 +148,12 @@ edited_rider <- select(rider_2019_sample, start.station.id, tripduration, DATE)
 total_data = merge(edited_weather, edited_rider, by.x="DATE", by.y="DATE", all.x=TRUE)
 head(total_data)
 ```
+# Average percipitation per ride by rider age
+group_mean <- total_data %>% 
+   group_by(age) %>%
+summarise(mean_PRCP_by_age = mean(PRCP))  
+
+ggplot(group_mean, aes(x = age, y = mean_PRCP_by_age)) + geom_line()
 
 ## Exploratory Data Analysis - Ride History
 
