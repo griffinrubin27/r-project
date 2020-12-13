@@ -204,4 +204,155 @@ rider_2019_sample %>%
   geom_point(shape = 1, size = 1, colour = "black") +
   labs(title="Average Speed of Riders by Age", x="Speed", y="Age")
 ```
+big_rain_data <- total_data %>% filter(total_data$PRCP > (0.1054468 + 0.2692807))
+Rain_Locations <- subset(big_rain_data, select=c("start.station.longitude", "start.station.latitude", "start.station.name"))
+names(Rain_Locations) = c("long", "lat", "station")
+count_starts = as.data.frame(table(big_rain_data$start.station.name), na.rm=TRUE)
+names(count_starts) = c("station", "starts")
+count_begins = as.data.frame(merge(count_starts,Rain_Locations, by.x = "station", by.y = "station", all.x=TRUE, all.y = TRUE, na.rm=TRUE))
+count_ends = as.data.frame(table(big_rain_data$end.station.name), na.rm=TRUE)
+names(count_ends) = c("station", "ends")
+station_flow = as.data.frame(merge(count_begins, count_ends, by.x="station", by.y="station", all.x=TRUE, all.y = TRUE, na.rm=TRUE))
+station_flow$net = station_flow$starts / station_flow$ends
+station_flow = na.omit(station_flow)
+distinct_data <- station_flow[!(duplicated(station_flow$station)), ]
+distinct_data
 
+#Asymmetric Travel by Station, All rides where PRCP was 1 SD above the Mean (>0.3747275)
+distinct_data %>% mutate(station = fct_reorder(station, net)) %>% ggplot(aes(x=station, y=net)) + geom_bar(stat = "identity")+ geom_hline(yintercept=1, linetype="dashed", color = "red") + labs(x="Stations", y="Total Starts / Total Ends in 2019", title = "Net 2019 Flow of Bikes per Station") + theme(axis.text.x = element_blank())
+
+```
+###Average Precipitation by Age
+```{r}
+###Mean PRCP by Age of Rider
+Plotdata <- total_data %>% 
+  group_by(age) %>%
+  summarise(mean_PRCP_by_age = mean(PRCP),
+            mean_duration = mean(tripduration)) 
+Plotdata
+  ggplot(Plotdata, aes(x = age, y = mean_PRCP_by_age)) + geom_point(alpha =0.9, shape = 18, colour = "blue", size = Plotdata$mean_duration/150) + geom_smooth(colour = "orange") 
+```
+###Mean Wind by Age of Rider
+```{r}
+Plotdata2 <- total_data %>% 
+  group_by(age) %>%
+   summarise(mean_AWND_by_age = mean(AWND,na.rm = TRUE),
+            mean_duration = mean(tripduration)) 
+Plotdata2
+  ggplot(Plotdata2, aes(x = age, y = mean_AWND_by_age)) + geom_point(alpha =0.9, shape = 18, colour = "cyan3", size = Plotdata$mean_duration/150) + geom_smooth(colour = "orange") 
+```
+###Mean Snow by Age of Rider
+```{r}
+Plotdata3 <- total_data %>% 
+  group_by(age) %>%
+   summarise(mean_SNOW_by_age = mean(SNOW,na.rm = TRUE),
+            mean_duration = mean(tripduration)) 
+Plotdata3
+  ggplot(Plotdata3, aes(x = age, y = mean_SNOW_by_age)) + geom_point(alpha =0.9, shape = 18, colour = "deepskyblue", size = Plotdata$mean_duration/150) + geom_smooth(colour = "orange") 
+```
+         
+
+#Station locations with Net Asymmetric Traffic <0.75, with PRCP >0.3747275
+```{r}
+Extra_Bikes_Rain <- distinct_data %>% filter(distinct_data$net < 0.75)
+Lost_Bikes_Rain <- distinct_data %>% filter(distinct_data$net > 1.25)
+Extra_Bikes_Rain
+Lost_Bikes_Rain
+Bikes_Rain_Map <- ggmap(start, extent = "device", legend = "topright")
+
+##Location of Stations with Significantly Positive Asymmetric Traffic during High PRCP days
+#below 0.75 Asymmetric Traffic
+Bikes_Rain_Map + geom_point(data = Extra_Bikes_Rain, aes(x = Extra_Bikes_Rain$long, y = Extra_Bikes_Rain$lat), colour = "deepskyblue")
+
+##Location of Stations with over 1.25 Asymmetric Traffic during High PRCP days
+#More bikes taken than returned in high PRCP
+Bikes_Rain_Map + geom_point(data = Lost_Bikes_Rain, aes(x = Lost_Bikes_Rain$long, y = Lost_Bikes_Rain$lat), colour = "deepskyblue")
+```
+#Station locations with Net Asymmetric Traffic <0.75, with SNOW > 0.21624501
+#Station locations with Net Asymmetric Traffic >1.25, with SNOW > 0.21624501
+```{r}
+big_snow_data <- total_data %>% filter(total_data$SNOW > (0.21624501))
+Snow_Locations <- subset(big_snow_data, select=c("start.station.longitude", "start.station.latitude", "start.station.name"))
+names(Snow_Locations) = c("long", "lat", "station")
+count_starts = as.data.frame(table(big_snow_data$start.station.name), na.rm=TRUE)
+names(count_starts) = c("station", "starts")
+count_begins = as.data.frame(merge(count_starts,Snow_Locations, by.x = "station", by.y = "station", all.x=TRUE, all.y = TRUE, na.rm=TRUE))
+count_ends = as.data.frame(table(big_snow_data$end.station.name), na.rm=TRUE)
+names(count_ends) = c("station", "ends")
+station_flow = as.data.frame(merge(count_begins, count_ends, by.x="station", by.y="station", all.x=TRUE, all.y = TRUE, na.rm=TRUE))
+station_flow$net = station_flow$starts / station_flow$ends
+station_flow = na.omit(station_flow)
+distinct_data <- station_flow[!(duplicated(station_flow$station)), ]
+distinct_data
+
+Extra_Bikes_Snow <- distinct_data %>% filter(distinct_data$net < 0.75)
+Lost_Bikes_Snow <- distinct_data %>% filter(distinct_data$net > 1.25)
+Bikes_Snow_Map <- ggmap(start, extent = "device", legend = "topright")
+
+##Location of Stations with Significantly Positive Asymmetric Traffic during High Snow days
+#below 0.75 Asymmetric Traffic
+Bikes_Snow_Map + geom_point(data = Extra_Bikes_Snow, aes(x = Extra_Bikes_Snow$long, y = Extra_Bikes_Snow$lat), colour = "cyan")
+
+##Location of Stations with over 1.25 Asymmetric Traffic during High Snow days
+#More bikes taken than returned in high Snow
+Bikes_Snow_Map + geom_point(data = Lost_Bikes_Snow, aes(x = Lost_Bikes_Snow$long, y = Lost_Bikes_Snow$lat), colour = "cyan")
+```
+
+#Station locations with Net Asymmetric Traffic <0.75, with AWND > 6.383933
+#Station locations with Net Asymmetric Traffic >1.25, with AWND > 6.383933
+```{r}
+big_wind_data <- total_data %>% filter(total_data$AWND > (6.383933))
+Wind_Locations <- subset(big_wind_data, select=c("start.station.longitude", "start.station.latitude", "start.station.name"))
+names(Wind_Locations) = c("long", "lat", "station")
+count_starts = as.data.frame(table(big_wind_data$start.station.name), na.rm=TRUE)
+names(count_starts) = c("station", "starts")
+count_begins = as.data.frame(merge(count_starts,Wind_Locations, by.x = "station", by.y = "station", all.x=TRUE, all.y = TRUE, na.rm=TRUE))
+count_ends = as.data.frame(table(big_wind_data$end.station.name), na.rm=TRUE)
+names(count_ends) = c("station", "ends")
+station_flow = as.data.frame(merge(count_begins, count_ends, by.x="station", by.y="station", all.x=TRUE, all.y = TRUE, na.rm=TRUE))
+station_flow$net = station_flow$starts / station_flow$ends
+station_flow = na.omit(station_flow)
+distinct_data <- station_flow[!(duplicated(station_flow$station)), ]
+distinct_data
+
+Extra_Bikes_Wind <- distinct_data %>% filter(distinct_data$net < 0.75)
+Lost_Bikes_Wind <- distinct_data %>% filter(distinct_data$net > 1.25)
+Bikes_Wind_Map <- ggmap(start, extent = "device", legend = "topright")
+
+##Location of Stations with Significantly Positive Asymmetric Traffic during High Snow days
+#below 0.75 Asymmetric Traffic
+Bikes_Wind_Map + geom_point(data = Extra_Bikes_Wind, aes(x = Extra_Bikes_Wind$long, y = Extra_Bikes_Wind$lat), colour = "darkorchid1")
+
+##Location of Stations with over 1.25 Asymmetric Traffic during High Snow days
+#More bikes taken than returned in high Snow
+Bikes_Wind_Map + geom_point(data = Lost_Bikes_Wind, aes(x = Lost_Bikes_Wind$long, y = Lost_Bikes_Wind$lat), colour = "darkorchid1")
+```
+#Station locations with Net Asymmetric Traffic <0.75, with TripDuration > 13026.7
+#Station locations with Net Asymmetric Traffic <0.75, with TripDuration > 13026.7
+```{r}
+big_trip_data <- total_data %>% filter(total_data$tripduration > (13026.7))
+Longtrip_Locations <- subset(big_trip_data, select=c("start.station.longitude", "start.station.latitude", "start.station.name"))
+names(Longtrip_Locations) = c("long", "lat", "station")
+count_starts = as.data.frame(table(big_trip_data$start.station.name), na.rm=TRUE)
+names(count_starts) = c("station", "starts")
+count_begins = as.data.frame(merge(count_starts,Longtrip_Locations, by.x = "station", by.y = "station", all.x=TRUE, all.y = TRUE, na.rm=TRUE))
+count_ends = as.data.frame(table(big_trip_data$end.station.name), na.rm=TRUE)
+names(count_ends) = c("station", "ends")
+station_flow = as.data.frame(merge(count_begins, count_ends, by.x="station", by.y="station", all.x=TRUE, all.y = TRUE, na.rm=TRUE))
+station_flow$net = station_flow$starts / station_flow$ends
+station_flow = na.omit(station_flow)
+distinct_data <- station_flow[!(duplicated(station_flow$station)), ]
+distinct_data
+
+Extra_Bikes_Longtrip <- distinct_data %>% filter(distinct_data$net < 0.75)
+Lost_Bikes_Longtrip <- distinct_data %>% filter(distinct_data$net > 1.25)
+Bikes_Longtrip_Map <- ggmap(start, extent = "device", legend = "topright")
+
+##Location of Stations with Significantly Positive Asymmetric Traffic for trips lasting longer than 1 SD above the mean
+#below 0.75 Asymmetric Traffic
+Bikes_Longtrip_Map + geom_point(data = Extra_Bikes_Longtrip, aes(x = Extra_Bikes_Longtrip$long, y = Extra_Bikes_Longtrip$lat), colour ="darkolivegreen3")
+
+##Location of Stations with over 1.25 Asymmetric Traffic during longer trips
+#More bikes taken than returned in high Snow
+Bikes_Longtrip_Map + geom_point(data = Lost_Bikes_Longtrip, aes(x = Lost_Bikes_Longtrip$long, y = Lost_Bikes_Longtrip$lat), colour ="darkolivegreen3")
+```
